@@ -108,18 +108,18 @@ impl<'a, T: Clone + Debug + 'a> ExactSizeIterator for ChannelIterator<'a, T> {}
 /// A collection of channels to be interpreted in a certain way.
 // NOTE: We DON'T assign a type here. That's MISTER's job...
 #[derive(Clone, Debug)]
-pub struct ImageData<T: Clone + Debug> {
+pub struct Image<T: Clone + Debug> {
     /// NOTE: At this point, we aren't going to even assign a color model, just a configuation of channels
     channels: Vec<Channel<T>>,
     /// The size that all channels *must* be.
     size: usize,
 }
 
-impl<T: Clone + Debug> ImageData<T> {
-    /// Creates a new ImageData
-    pub fn new(size: usize) -> ImageData<T> {
+impl<T: Clone + Debug> Image<T> {
+    /// Creates a new Image
+    pub fn new(size: usize) -> Image<T> {
         // NOTE: We start with NO CHANNELS, so something must be done...
-        ImageData {
+        Image {
             channels: vec![],
             size: size
         }
@@ -144,14 +144,14 @@ impl<T: Clone + Debug> ImageData<T> {
     }
 }
 
-impl<T: Clone + Debug> Index<usize> for ImageData<T> {
+impl<T: Clone + Debug> Index<usize> for Image<T> {
     type Output = Channel<T>;
     fn index(&self, i: usize) -> &Channel<T> {
         self.channel(i)
     }
 }
 
-impl<T: Clone + Debug> IndexMut<usize> for ImageData<T> {
+impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
     fn index_mut(&mut self, i: usize) -> &mut Channel<T> {
         self.channel_mut(i)
     }
@@ -159,28 +159,30 @@ impl<T: Clone + Debug> IndexMut<usize> for ImageData<T> {
 
 /// Defines the bounds of an image
 /// Each drawing layer should be its own Image
-#[derive(Clone, Debug)]
-pub struct Image<T: Clone + Debug> {
-    data: Arc<Mutex<ImageData<T>>>,
-    size: Arc<Mutex<(usize, usize)>>, // NOTE: Do we use usize to define image limits? Might work, but..., also, shared?
-}
+// #[derive(Clone, Debug)]
+// pub struct Image<T: Clone + Debug> {
+//     data: Arc<Mutex<Image<T>>>,
+//     size: Arc<Mutex<(usize, usize)>>, // NOTE: Do we use usize to define image limits? Might work, but..., also, shared?
+// }
+//
+// impl<T: Clone + Debug> Image<T> {
+//     // An important feature? for temporaries
+//     /// Creates a completely unique copy of this image (data is NOT linked between to two)
+//     pub fn deep_clone(&self) -> Image<T> {
+//         // QUESTION: Do we really want to use lock()? It's not very error friendly
+//         // XXX: We'll use lock() until we find a case were we DON'T want to hard error out on deep clone
+//         Image {
+//             data: Arc::new(Mutex::new(self.data.lock().unwrap().clone())),
+//             size: Arc::new(Mutex::new(self.size.lock().unwrap().clone())),
+//         }
+//     }
+// }
 
-impl<T: Clone + Debug> Image<T> {
-    // An important feature? for temporaries
-    /// Creates a completely unique copy of this image (data is NOT linked between to two)
-    pub fn deep_clone(&self) -> Image<T> {
-        // QUESTION: Do we really want to use lock()? It's not very error friendly
-        // XXX: We'll use lock() until we find a case were we DON'T want to hard error out on deep clone
-        Image {
-            data: Arc::new(Mutex::new(self.data.lock().unwrap().clone())),
-            size: Arc::new(Mutex::new(self.size.lock().unwrap().clone())),
-        }
-    }
-}
+type WrappedImage<T> = Arc<Mutex<Image<T>>>; // Placeholder
 
 #[cfg(test)]
 mod tests {
-    use super::{Channel, ImageData};
+    use super::{Channel, Image};
     // TODO: Move these tests and Image, Channel and ImagaData into separate module
     #[test]
     fn channel_capacity() {
@@ -217,12 +219,12 @@ mod tests {
 
     #[test]
     fn imagedata_single_channel() {
-        let mut new_data = ImageData::new(5);
-        // An ImageData is simply a grouping of channels.
+        let mut new_data = Image::new(5);
+        // An Image is simply a grouping of channels.
         // Why choose a method like this to store data? Because this is the way I know how~
         // On a more serious note, I do plan on create color channel support, so support all the way
         // down here should help some.
-        new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to ImageData is size
+        new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
         // Let's change something
         new_data.channel_mut(0).write(1, 21);
         // Can also write as: new_data[0].write(1, 21) because of IndexMut impl
@@ -231,12 +233,12 @@ mod tests {
 
     #[test]
     fn imagedata_double_channel() {
-        let mut new_data = ImageData::new(5);
-        // An ImageData is simply a grouping of channels.
+        let mut new_data = Image::new(5);
+        // An Image is simply a grouping of channels.
         // Why choose a method like this to store data? Because this is the way I know how~
         // On a more serious note, I do plan on create color channel support, so support all the way
         // down here should help some.
-        new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to ImageData is size
+        new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
         new_data.create_channel(1);
         // Let's change something
         new_data.channel_mut(0).write(1, 21);
