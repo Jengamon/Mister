@@ -105,6 +105,9 @@ impl<'a, T: Clone + Debug + 'a> Iterator for ChannelIterator<'a, T> {
 }
 impl<'a, T: Clone + Debug + 'a> ExactSizeIterator for ChannelIterator<'a, T> {}
 
+
+// TODO A mutable iterator
+
 /// A collection of channels to be interpreted in a certain way.
 // NOTE: We DON'T assign a type here. That's MISTER's job...
 #[derive(Clone, Debug)]
@@ -142,6 +145,10 @@ impl<T: Clone + Debug> Image<T> {
     pub fn count(&self) -> usize {
         self.channels.len()
     }
+
+    pub fn len(&self) -> usize {
+        self.size
+    }
 }
 
 impl<T: Clone + Debug> Index<usize> for Image<T> {
@@ -178,7 +185,7 @@ impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
 //     }
 // }
 
-type WrappedImage<T> = Arc<Mutex<Image<T>>>; // Placeholder
+pub type WrappedImage<T> = Arc<Mutex<Image<T>>>; // Placeholder
 
 #[cfg(test)]
 mod tests {

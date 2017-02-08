@@ -47,6 +47,22 @@ How we'll solve the age old problem of timemaps versus sprites by combining the 
     - Can switch into sprite mode to draw more tiles, or modify the existing ones
   - *This is all conjecture, so we'll partially see w/ implementation.*
 
+REAL IMPLEMENTATION:
+
+- 2 storage formats:
+  - stores color components as bytes (4 bytes for RGBA image) (1 byte per channel)
+    - Pros:
+      - optimized for space
+      - easier to share (smaller files sizes)
+    - Cons:
+      - slightly inaccurate (we use floating point internally)
+  - stores color components as [IEEE 32-bit](https://en.wikipedia.org/wiki/Single-precision_floating-point_format) (4 byte) (16 bytes for RGBA image) (4 bytes per channel)
+    - Pros:
+      - accurate internally
+    - Cons:
+      - files are quite a bit larger
+      - (My own say) This is going to be ... interesting ... to code
+
 # Notes?
 
 - I'll try to do TDD this time.

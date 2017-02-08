@@ -15,6 +15,8 @@ glutin = "^0.7"
 gfx_window_glutin = "^0.14"
 slog = "^1.5"
 rusttype = "^0.2"
+palette = "^0.2"
+rand = "0.3"
 # TODO: Add palette-rs, image, backtrace-rs, error-chain, clap
 # NOTE for image: Unneccessary in mister once native plugins land, or a binding to the scripting language is made (prob. both)
 # In fact, I'm probably not going to add image as a library to mister, but as one to the plugin I make right after to handle
