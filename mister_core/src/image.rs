@@ -3,7 +3,6 @@
 
 use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex}; // Anticipate threading
 
 // QUESTION: Do we need a constrait on T?
 /// This represent a set of data values for one color.
@@ -17,6 +16,7 @@ pub struct Channel<T: Clone + Debug> {
 }
 
 impl<T: Clone + Debug> Channel<T> {
+    /// Creates a new Channel
     pub fn new(default: T, x: usize) -> Channel<T> {
         Channel {
             data: vec![default.clone(); x],
@@ -25,34 +25,44 @@ impl<T: Clone + Debug> Channel<T> {
     }
 
     // Note this is the size of data w/o reallocation
+    /// Get the amount of data this channel can hold.
+    /// Note that this is equal to its length
+    #[deprecated(since="0.0.1", note="Use len() instead")]
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
     // This is the actual size of data inside the channel
+    /// Get the length of data in this channel
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     // NOTE: Changing this to "write", but we may switch back, IDK.
+    /// Change value at index `i` to `data`
     pub fn write(&mut self, i: usize, data: T) {
         // TODO: Bounds checking
         self.data.remove(i);
         self.data.insert(i, data);
     }
 
+    /// Retrieve value at index `i`
     pub fn index(&self, i: usize) -> &T {
         &self.data[i]
     }
 
+    /// Retrieve value at index `i` mutably
     pub fn index_mut(&mut self, i: usize) -> &mut T {
         &mut self.data[i]
     }
 
+    /// Retrieve value at index `i` as a clone (non-reference)
+    #[deprecated(since="0.0.1", note="Prefer index(i).clone() instead")]
     pub fn index_clone(&self, i: usize) -> T {
         self.data[i].clone()
     }
 
+    /// Resize channel to `new_len`
     pub fn resize(&mut self, new_len: usize) {
         self.data.truncate(new_len);
         if self.len() < new_len {
@@ -62,6 +72,7 @@ impl<T: Clone + Debug> Channel<T> {
         }
     }
 
+    /// Create an iterator over the values of this channel
     pub fn iter(&self) -> ChannelIterator<T> {
         ChannelIterator {
             chan: self,
@@ -83,6 +94,7 @@ impl<T: Clone + Debug> IndexMut<usize> for Channel<T> {
     }
 }
 
+/// Iterates over the data of a channel
 pub struct ChannelIterator<'a, T: Clone + Debug + 'a> {
     chan: &'a Channel<T>,
     at: usize
@@ -115,45 +127,51 @@ pub struct Image<T: Clone + Debug> {
     /// NOTE: At this point, we aren't going to even assign a color model, just a configuation of channels
     channels: Vec<Channel<T>>,
     /// The size that all channels *must* be.
-    size: usize,
+    len: usize,
 }
 
 impl<T: Clone + Debug> Image<T> {
     /// Creates a new Image
-    pub fn new(size: usize) -> Image<T> {
+    pub fn new(len: usize) -> Image<T> {
         // NOTE: We start with NO CHANNELS, so something must be done...
         Image {
             channels: vec![],
-            size: size
+            len: len
         }
     }
 
+    /// Creates a channel
+    // TODO Add specifics (same with Channel::new)
     pub fn create_channel(&mut self, default: T) {
-        self.channels.push(Channel::new(default, self.size))
+        self.channels.push(Channel::new(default, self.len))
     }
 
     // TODO: Bounds-checking
+    /// Access channel at index `i`
     pub fn channel(&self, i: usize) -> &Channel<T> {
         &self.channels[i]
     }
 
+    /// Access channel at index `i` mutably
     pub fn channel_mut(&mut self, i: usize) -> &mut Channel<T> {
         &mut self.channels[i]
     }
 
-    /// Returns the number of channels
+    /// Get the number of channels
     pub fn count(&self) -> usize {
         self.channels.len()
     }
 
+    /// Get the length of image, which is the length of each channel
     pub fn len(&self) -> usize {
-        self.size
+        self.len
     }
 
-    pub fn resize(&mut self, new_size: usize) {
-        self.size = new_size;
+    /// Resize image to length `new_len`
+    pub fn resize(&mut self, new_len: usize) {
+        self.len = new_len;
         for c in self.channels.iter_mut() {
-            c.resize(new_size);
+            c.resize(new_len);
         }
     }
 }
@@ -171,40 +189,25 @@ impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
     }
 }
 
-/// Defines the bounds of an image
-/// Each drawing layer should be its own Image
-// #[derive(Clone, Debug)]
-// pub struct Image<T: Clone + Debug> {
-//     data: Arc<Mutex<Image<T>>>,
-//     size: Arc<Mutex<(usize, usize)>>, // NOTE: Do we use usize to define image limits? Might work, but..., also, shared?
-// }
-//
-// impl<T: Clone + Debug> Image<T> {
-//     // An important feature? for temporaries
-//     /// Creates a completely unique copy of this image (data is NOT linked between to two)
-//     pub fn deep_clone(&self) -> Image<T> {
-//         // QUESTION: Do we really want to use lock()? It's not very error friendly
-//         // XXX: We'll use lock() until we find a case were we DON'T want to hard error out on deep clone
-//         Image {
-//             data: Arc::new(Mutex::new(self.data.lock().unwrap().clone())),
-//             size: Arc::new(Mutex::new(self.size.lock().unwrap().clone())),
-//         }
-//     }
-// }
-
-pub type WrappedImage<T> = Arc<Mutex<Image<T>>>; // Placeholder
-
 use palette;
 use std::marker;
 
 /// An interface that all Image interpreters must use.
 pub trait ImageFormat<T: Clone + Debug> {
+    /// Gets the underlying image mutably
     fn image_mut(&mut self) -> &mut Image<T>;
+    /// Gets the underlying image
     fn image(&self) -> &Image<T>;
+    /// Gets the size of the image (in width and height)
+    /// ## Example:
+    /// ```rust
+    /// let (width, height) = format.size();
+    /// ```
     fn size(&self) -> (usize, usize);
 
+    /// Returns the pixel at the specified location
     fn pixel(&self, x: usize, y: usize) -> Option<palette::Colora>;
-    // fn pixel_tuple(&self, xy: (usize, usize)) -> Option<palette::Colora> { self.pixel(xy.0, xy.1) }
+    /// Returns an iterator over all pixels of this image
     fn pixels(&self) -> PixelIterator<T> where Self: marker::Sized { PixelIterator { source: self, index: 0 } }
 }
 
@@ -214,14 +217,20 @@ pub trait MutableImageFormat<T: Clone + Debug>: ImageFormat<T> {
     type InternalFormat; // TODO Find a better way to do these
     /// Type returned on error
     type Error;
+    /// Returns the pixel at the specified location mutably
     fn pixel_mut(&mut self, x: usize, y: usize) -> Option<Box<PixelWrapper<T, Self::InternalFormat, Self::Error>>>;
 }
 
+/// Provides access to a pixel for both reading and writing
+// IMPL NOTE: Might use RwLock
 pub trait PixelWrapper<'a, T: Clone + Debug, F, E> {
+    /// Read the pixel
     fn read(&self) -> palette::Colora;
+    /// Write to the pixel
     fn write(&mut self, f: F) -> Result<(), E>;
 }
 
+/// Iterates over the pixels of an image
 pub struct PixelIterator<'a, T: 'a + Clone + Debug> {
     source: &'a ImageFormat<T>,
     index: usize,
@@ -326,5 +335,15 @@ mod tests {
         // resize the channel
         new_data.resize(3);
         assert_eq!(new_data.len(), 3);
+    }
+
+    #[test]
+    fn imagedata_channel_length() {
+        let new_data = Image::new(5);
+        new_data.create_channel(());
+        new_data.create_channel(());
+
+        assert_eq!(new_data.len(), new_data.channel(0).len());
+        assert_eq!(new_data.len(), new_data.channel(1).len());
     }
 }

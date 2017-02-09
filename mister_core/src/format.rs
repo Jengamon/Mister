@@ -12,7 +12,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 const FORMAT_VERSION: &'static [u8] = &[0, 1, 0];
 
 /// Represents how the MisterFile is expected to store colors
-enum ColorStorage {
+pub enum ColorStorage {
      /// Use u8 to store color
     Int,
     /// Use f32 to store color
@@ -20,6 +20,6 @@ enum ColorStorage {
 }
 
 /// This struct represents a MISTER project on disk.
-struct MisterFile {
+pub struct MisterFile {
 
 }
