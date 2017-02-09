@@ -5,7 +5,6 @@
 extern crate byteorder;
 extern crate palette;
 
-/// The formats of images, and how to access and modify them.
 pub mod image; // Where all image-storing stuff goes
 /// Structures to save and read a MISTER project file
 pub mod format;

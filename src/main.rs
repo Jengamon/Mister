@@ -83,7 +83,7 @@ fn main() {
     let mut rng = rand::thread_rng();
     for i in 0..3 {
         use rand::Rng;
-        let channel = image.channel_mut(i);
+        let channel = image.channel_mut(i).unwrap();
         // let mut value = rng.gen(); // Be slightly faster, We just want A value. We don't actually care what.
         for x in 0..channel.len() {
             channel[x] = rng.gen(); // each row is actually a "pixel"
@@ -95,7 +95,7 @@ fn main() {
     // Convert channels into pixels
     let mut colors = vec![];
     for i in 0..image.len() {
-        colors.push(palette::Rgba::new(image.channel(0)[i], image.channel(1)[i], image.channel(2)[i], image.channel(3)[i]));
+        colors.push(palette::Rgba::new(image[0][i], image[1][i], image[2][i], image[3][i]));
     }
 
     // Convert linear pixels into gamma-corrected pixels

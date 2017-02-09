@@ -1,5 +1,6 @@
 // We store images as groups of channels (buffers of EQUAL SIZED DATA) and a format to interpret it.
 // XXX: We don't store format anymore. Just channels of equal size.
+//! The formats of images, and how to access and modify them.
 
 use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
@@ -47,19 +48,19 @@ impl<T: Clone + Debug> Channel<T> {
     }
 
     /// Retrieve value at index `i`
-    pub fn index(&self, i: usize) -> &T {
-        &self.data[i]
+    pub fn index(&self, i: usize) -> Option<&T> {
+        self.data.get(i)
     }
 
     /// Retrieve value at index `i` mutably
-    pub fn index_mut(&mut self, i: usize) -> &mut T {
-        &mut self.data[i]
+    pub fn index_mut(&mut self, i: usize) -> Option<&mut T> {
+        self.data.get_mut(i)
     }
 
     /// Retrieve value at index `i` as a clone (non-reference)
     #[deprecated(since="0.0.1", note="Prefer index(i).clone() instead")]
-    pub fn index_clone(&self, i: usize) -> T {
-        self.data[i].clone()
+    pub fn index_clone(&self, i: usize) -> Option<T> {
+        self.index(i).cloned()
     }
 
     /// Resize channel to `new_len`
@@ -81,16 +82,18 @@ impl<T: Clone + Debug> Channel<T> {
     }
 }
 
+// NOTE that Index implementations PANIC at failure
 impl<T: Clone + Debug> Index<usize> for Channel<T> {
     type Output = T;
     fn index(&self, i: usize) -> &T {
-        self.index(i)
+        self.index(i).unwrap()
     }
 }
 
+// NOTE that Index implementations PANIC at failure
 impl<T: Clone + Debug> IndexMut<usize> for Channel<T> {
     fn index_mut(&mut self, i: usize) -> &mut T {
-        self.index_mut(i)
+        self.index_mut(i).unwrap()
     }
 }
 
@@ -107,7 +110,7 @@ impl<'a, T: Clone + Debug + 'a> Iterator for ChannelIterator<'a, T> {
         if self.at - 1 >= self.chan.len() {
             None
         } else {
-            Some(&self.chan[self.at-1])
+            self.chan.index(self.at-1)
         }
     }
 
@@ -148,13 +151,13 @@ impl<T: Clone + Debug> Image<T> {
 
     // TODO: Bounds-checking
     /// Access channel at index `i`
-    pub fn channel(&self, i: usize) -> &Channel<T> {
-        &self.channels[i]
+    pub fn channel(&self, i: usize) -> Option<&Channel<T>> {
+        self.channels.get(i)
     }
 
     /// Access channel at index `i` mutably
-    pub fn channel_mut(&mut self, i: usize) -> &mut Channel<T> {
-        &mut self.channels[i]
+    pub fn channel_mut(&mut self, i: usize) -> Option<&mut Channel<T>> {
+        self.channels.get_mut(i)
     }
 
     /// Get the number of channels
@@ -176,16 +179,17 @@ impl<T: Clone + Debug> Image<T> {
     }
 }
 
+// NOTE Index impl PANIC at failure
 impl<T: Clone + Debug> Index<usize> for Image<T> {
     type Output = Channel<T>;
     fn index(&self, i: usize) -> &Channel<T> {
-        self.channel(i)
+        self.channel(i).unwrap()
     }
 }
 
 impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
     fn index_mut(&mut self, i: usize) -> &mut Channel<T> {
-        self.channel_mut(i)
+        self.channel_mut(i).unwrap()
     }
 }
 
@@ -199,9 +203,33 @@ pub trait ImageFormat<T: Clone + Debug> {
     /// Gets the underlying image
     fn image(&self) -> &Image<T>;
     /// Gets the size of the image (in width and height)
-    /// ## Example:
+    ///
+    /// # Examples:
+    ///
     /// ```rust
+    /// # extern crate palette;
+    /// # extern crate mister_core;
+    ///
+    /// # struct EmptyFormat {
+    /// #    i: mister_core::Image<f32>,
+    /// #    size: (usize, usize)
+    /// # }
+    ///
+    /// # impl mister_core::image::ImageFormat<f32> for EmptyFormat {
+    /// #    fn image_mut(&mut self) -> &mut mister_core::Image<f32> { &mut self.i }
+    /// #    fn image(&self) -> &mister_core::Image<f32> { &self.i }
+    /// #    fn size(&self) -> (usize, usize) { self.size }
+    /// #    fn pixel(&self, x: usize, y: usize) -> Option<palette::Colora> { None }
+    /// # }
+    /// # fn main() {
+    /// use mister_core::image::{Image, ImageFormat};
+    /// // An example format that is simply meant to wrap the size
+    /// let format = EmptyFormat { i: Image::new(0), size: (10, 10) };
+    ///
     /// let (width, height) = format.size();
+    /// assert_eq!(width, 10);
+    /// assert_eq!(height, 10);
+    /// # }
     /// ```
     fn size(&self) -> (usize, usize);
 
@@ -308,9 +336,9 @@ mod tests {
         new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
         assert_eq!(new_data.count(), 1);
         // Let's change something
-        new_data.channel_mut(0).write(1, 21);
+        new_data[0].write(1, 21);
         // Can also write as: new_data[0].write(1, 21) because of IndexMut impl
-        assert_eq!(new_data.channel(0).iter().cloned().collect::<Vec<_>>(), vec![0,21,0,0,0]);
+        assert_eq!(new_data.channel(0).unwrap().iter().cloned().collect::<Vec<_>>(), vec![0,21,0,0,0]);
     }
 
     #[test]
@@ -320,11 +348,12 @@ mod tests {
         new_data.create_channel(1);
         // Let's change something
         assert_eq!(new_data.count(), 2);
-        new_data.channel_mut(0).write(1, 21);
+        // .channel_mut(x).unwrap() == [x]
+        new_data.channel_mut(0).unwrap().write(1, 21);
         new_data[1].write(2, 22);
         // Can also write as: new_data[0].write(1, 21) because of IndexMut impl
-        assert_eq!(new_data.channel(0).iter().cloned().collect::<Vec<_>>(), vec![0,21,0,0,0]);
-        assert_eq!(new_data.channel(1).iter().cloned().collect::<Vec<_>>(), vec![1,1,22,1,1]);
+        assert_eq!(new_data.channel(0).unwrap().iter().cloned().collect::<Vec<_>>(), vec![0,21,0,0,0]);
+        assert_eq!(new_data[1].iter().cloned().collect::<Vec<_>>(), vec![1,1,22,1,1]);
     }
 
     #[test]
@@ -339,11 +368,11 @@ mod tests {
 
     #[test]
     fn imagedata_channel_length() {
-        let new_data = Image::new(5);
+        let mut new_data = Image::new(5);
         new_data.create_channel(());
         new_data.create_channel(());
 
-        assert_eq!(new_data.len(), new_data.channel(0).len());
-        assert_eq!(new_data.len(), new_data.channel(1).len());
+        assert_eq!(new_data.len(), new_data[0].len());
+        assert_eq!(new_data.len(), new_data[1].len());
     }
 }
