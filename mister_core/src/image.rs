@@ -209,12 +209,12 @@ pub trait ImageFormat<T: Clone + Debug> {
     /// ```rust
     /// # extern crate palette;
     /// # extern crate mister_core;
-    ///
+    /// #
     /// # struct EmptyFormat {
     /// #    i: mister_core::Image<f32>,
     /// #    size: (usize, usize)
     /// # }
-    ///
+    /// #
     /// # impl mister_core::image::ImageFormat<f32> for EmptyFormat {
     /// #    fn image_mut(&mut self) -> &mut mister_core::Image<f32> { &mut self.i }
     /// #    fn image(&self) -> &mister_core::Image<f32> { &self.i }

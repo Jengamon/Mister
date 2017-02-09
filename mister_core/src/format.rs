@@ -1,3 +1,5 @@
+//! Structures to save and read a MISTER project file
+
 // Here is where we put the code that actually stores the format to disk.
 // Our file format is like this: (Numbers are stored in little endian order)
 // 4-byte string:
