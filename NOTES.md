@@ -54,6 +54,7 @@ REAL IMPLEMENTATION:
     - Pros:
       - optimized for space
       - easier to share (smaller files sizes)
+      - matches other file formats much more closely
     - Cons:
       - slightly inaccurate (we use floating point internally)
   - stores color components as [IEEE 32-bit](https://en.wikipedia.org/wiki/Single-precision_floating-point_format) (4 byte) (16 bytes for RGBA image) (4 bytes per channel)
@@ -61,7 +62,7 @@ REAL IMPLEMENTATION:
       - accurate internally
     - Cons:
       - files are quite a bit larger
-      - (My own say) This is going to be ... interesting ... to code
+      - doesn't match other image storing formats
 
 # Notes?
 

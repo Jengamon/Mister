@@ -30,12 +30,23 @@ gfx_defines! {
 const VERTEX_SRC: &'static [u8] = include_bytes!("test.vert");
 const FRGMNT_SRC: &'static [u8] = include_bytes!("test.frag");
 
+trait ToU32 {
+    fn to_u32(self) -> u32;
+}
+
+impl ToU32 for f32 {
+    fn to_u32(self) -> u32 {
+        unsafe { std::mem::transmute::<f32, u32>(self) }
+    }
+}
+
 fn main() {
     use gfx::traits::{FactoryExt};
     use gfx::{Factory};
     let builder = glutin::WindowBuilder::new()
-        .with_title("MISTER".to_string());
-    let (window, mut device, mut factory, rtv, stv) = gfx_window::init::<Rgba8, DepthStencil>(builder);
+        .with_title("MISTER".to_string())
+        .with_dimensions(640, 480);
+    let (mut window, mut device, mut factory, mut rtv, mut stv) = gfx_window::init::<Rgba8, DepthStencil>(builder);
     println!("Main function!");
 
     // TODO: Make a rudimentary rendering system to quickly draw an image to the screen.
@@ -51,7 +62,15 @@ fn main() {
     // let program = factory.link_program(VERTEX_SRC, FRGMNT_SRC).unwrap();
     let pso = factory.create_pipeline_simple(VERTEX_SRC, FRGMNT_SRC, rgb::new()).unwrap();
 
-    let (WIDTH, HEIGHT) = (640, 480);
+    let (WIDTH, HEIGHT) = (32, 480);
+
+    // Here, we cheat. Let me explain.
+    // We originally were generating a pixel per screen pixel (640*480 pixels), which is a lot.
+    // We then switched to generating pixels by row, and only changing the value then.
+    //
+    // But I realized that our shader streches "pixels" to fit the screen, so why not just render 1 pixel,
+    // and stretch it across the screen. Shader stuff works, because it works in screen space,
+    // not pixel, so hurrah! We got it!
 
     let mut image = mister_core::Image::new(WIDTH * HEIGHT);
     image.create_channel(0.0f32); // R
@@ -65,10 +84,11 @@ fn main() {
     for i in 0..3 {
         use rand::Rng;
         let channel = image.channel_mut(i);
-        let mut value = rng.gen(); // Be slightly faster, We just want A value. We don't actually care what.
+        // let mut value = rng.gen(); // Be slightly faster, We just want A value. We don't actually care what.
         for x in 0..channel.len() {
-            channel[x] = value;
-            if (x % WIDTH == 0) { value = rng.gen(); }
+            channel[x] = rng.gen(); // each row is actually a "pixel"
+            // channel[x] = value; // each row is actually a "pixel"
+            // if x % WIDTH == 0 { value = rng.gen(); }
         }
     }
 
@@ -82,20 +102,16 @@ fn main() {
     let colors: Vec<palette::pixel::Srgb> = colors.into_iter().map(|x| x.into()).collect::<Vec<_>>();
 
     use gfx::texture::{Kind, AaMode, FilterMethod, SamplerInfo, WrapMode};
+    use gfx::format::Rgba32F;
 
     // Upload pixel data to a texture
-    let data = colors.iter().flat_map(|x| vec![(x.red * 255.0) as u8, (x.green * 255.0) as u8, (x.blue * 255.0) as u8, (x.alpha * 255.0) as u8]).collect::<Vec<_>>();
-    let (tex, texview) = factory.create_texture_immutable_u8::<Rgba8>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
-    println!("LOD COLOR");
+    let data: Vec<[u32; 4]> = colors.iter().map(|x| [x.red.to_u32(), x.green.to_u32(), x.blue.to_u32(), x.alpha.to_u32()]).collect::<Vec<_>>();
+    // let data: Vec<[u32; 4]> = colors.iter().map(|x| [(x.red.to_u32() + x.green.to_u32() + x.blue.to_u32()) / 3, 0, 0, x.alpha.to_u32()]).collect::<Vec<_>>();
+    // let (tex, texview) = factory.create_texture_immutable_u8::<Rgba8>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
+    let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
     let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
 
-    // Create data to draw
-    let data = rgb::Data {
-        vbuf: buf,
-        out: rtv.clone(),
-        picture: (texview, sampler)
-    };
-
+    let mut view_update = vec![];
     'system: loop {
         use gfx::{Device};
         // use gfx::traits::{FactoryExt};
@@ -104,9 +120,24 @@ fn main() {
             use glutin::Event;
             match event {
                 Event::Closed => break 'system,
+                Event::Resized(_, _) => {
+                    println!("REC");
+                    view_update.push(());
+                },
                 _ => ()
             }
         }
+
+        for _ in view_update.drain(0..) {
+            gfx_window::update_views(&mut window, &mut rtv, &mut stv)
+        }
+
+        // Create data to draw
+        let data = rgb::Data {
+            vbuf: buf.clone(),
+            out: rtv.clone(),
+            picture: (texview.clone(), sampler.clone())
+        };
 
         let mut enc: gfx::Encoder<gfx_gl::Resources, _> = factory.create_command_buffer().into();
 

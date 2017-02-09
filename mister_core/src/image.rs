@@ -149,6 +149,13 @@ impl<T: Clone + Debug> Image<T> {
     pub fn len(&self) -> usize {
         self.size
     }
+
+    pub fn resize(&mut self, new_size: usize) {
+        self.size = new_size;
+        for c in self.channels.iter_mut() {
+            c.resize(new_size);
+        }
+    }
 }
 
 impl<T: Clone + Debug> Index<usize> for Image<T> {
@@ -186,6 +193,64 @@ impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
 // }
 
 pub type WrappedImage<T> = Arc<Mutex<Image<T>>>; // Placeholder
+
+use palette;
+use std::marker;
+
+/// An interface that all Image interpreters must use.
+pub trait ImageFormat<T: Clone + Debug> {
+    fn image_mut(&mut self) -> &mut Image<T>;
+    fn image(&self) -> &Image<T>;
+    fn size(&self) -> (usize, usize);
+
+    fn pixel(&self, x: usize, y: usize) -> Option<palette::Colora>;
+    // fn pixel_tuple(&self, xy: (usize, usize)) -> Option<palette::Colora> { self.pixel(xy.0, xy.1) }
+    fn pixels(&self) -> PixelIterator<T> where Self: marker::Sized { PixelIterator { source: self, index: 0 } }
+}
+
+/// An interface for image formats that allows for modification
+pub trait MutableImageFormat<T: Clone + Debug>: ImageFormat<T> {
+    /// The format that the format uses to set its channels
+    type InternalFormat; // TODO Find a better way to do these
+    /// Type returned on error
+    type Error;
+    fn pixel_mut(&mut self, x: usize, y: usize) -> Option<Box<PixelWrapper<T, Self::InternalFormat, Self::Error>>>;
+}
+
+pub trait PixelWrapper<'a, T: Clone + Debug, F, E> {
+    fn read(&self) -> palette::Colora;
+    fn write(&mut self, f: F) -> Result<(), E>;
+}
+
+pub struct PixelIterator<'a, T: 'a + Clone + Debug> {
+    source: &'a ImageFormat<T>,
+    index: usize,
+    // phantom: marker::PhantomData<T>
+}
+
+impl<'a, T: Clone + Debug> Iterator for PixelIterator<'a, T> {
+    type Item = palette::Colora;
+    fn next(&mut self) -> Option<palette::Colora> {
+        let (width, height) = self.source.size();
+        let (x, y) = (self.index / width, self.index % width);
+        if y > height {
+            return None
+        } else if x > width {
+            unreachable!("Math is now wonky!");
+        }
+
+        self.index += 1;
+        self.source.pixel(x, y)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (width, height) = self.source.size();
+        let size = width * height;
+        (size, Some(size))
+    }
+}
+impl<'a, T: Clone + Debug + 'a> ExactSizeIterator for PixelIterator<'a, T> {}
+
 
 #[cfg(test)]
 mod tests {
@@ -232,6 +297,7 @@ mod tests {
         // On a more serious note, I do plan on create color channel support, so support all the way
         // down here should help some.
         new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
+        assert_eq!(new_data.count(), 1);
         // Let's change something
         new_data.channel_mut(0).write(1, 21);
         // Can also write as: new_data[0].write(1, 21) because of IndexMut impl
@@ -241,17 +307,24 @@ mod tests {
     #[test]
     fn imagedata_double_channel() {
         let mut new_data = Image::new(5);
-        // An Image is simply a grouping of channels.
-        // Why choose a method like this to store data? Because this is the way I know how~
-        // On a more serious note, I do plan on create color channel support, so support all the way
-        // down here should help some.
         new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
         new_data.create_channel(1);
         // Let's change something
+        assert_eq!(new_data.count(), 2);
         new_data.channel_mut(0).write(1, 21);
         new_data[1].write(2, 22);
         // Can also write as: new_data[0].write(1, 21) because of IndexMut impl
         assert_eq!(new_data.channel(0).iter().cloned().collect::<Vec<_>>(), vec![0,21,0,0,0]);
         assert_eq!(new_data.channel(1).iter().cloned().collect::<Vec<_>>(), vec![1,1,22,1,1]);
+    }
+
+    #[test]
+    fn imagedata_resize() {
+        let mut new_data = Image::new(5);
+        new_data.create_channel(0); // NOTE: Value passed is DEFAULT value. Argument to Image is size
+        new_data.create_channel(1);
+        // resize the channel
+        new_data.resize(3);
+        assert_eq!(new_data.len(), 3);
     }
 }

@@ -1,4 +1,10 @@
+#![warn(missing_docs)]
+// NOTE: Once we reach version 1.0, change from warn to deny
+extern crate byteorder;
+extern crate palette;
+
 pub mod image; // Where all image-storing stuff goes
+pub mod format;
 
 pub use self::image::{Channel, WrappedImage, Image};
 
