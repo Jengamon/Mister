@@ -8,6 +8,7 @@ extern crate glutin;
 extern crate rusttype;
 extern crate rand;
 extern crate palette;
+extern crate conrod;
 
 extern crate mister_core;
 
