@@ -12,7 +12,7 @@ extern crate conrod;
 
 extern crate mister_core;
 
-use gfx::format::{DepthStencil, Rgba8};
+use gfx::format::{DepthStencil, Rgba8, Srgba8};
 
 // Our rudimentary rendering system. Hurrah for laziness.
 gfx_defines! {
@@ -24,7 +24,7 @@ gfx_defines! {
     pipeline rgb {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         picture: gfx::TextureSampler<[f32; 4]> = "Texture",
-        out: gfx::RenderTarget<Rgba8> = "Color",
+        out: gfx::RenderTarget<Srgba8> = "Color",
     }
 }
 
@@ -47,7 +47,7 @@ fn main() {
     let builder = glutin::WindowBuilder::new()
         .with_title("MISTER".to_string())
         .with_dimensions(640, 480);
-    let (mut window, mut device, mut factory, mut rtv, mut stv) = gfx_window::init::<Rgba8, DepthStencil>(builder);
+    let (mut window, mut device, mut factory, mut rtv, mut stv) = gfx_window::init::<Srgba8, DepthStencil>(builder);
     println!("Main function!");
 
     // TODO: Make a rudimentary rendering system to quickly draw an image to the screen.
@@ -63,7 +63,7 @@ fn main() {
     // let program = factory.link_program(VERTEX_SRC, FRGMNT_SRC).unwrap();
     let pso = factory.create_pipeline_simple(VERTEX_SRC, FRGMNT_SRC, rgb::new()).unwrap();
 
-    let (WIDTH, HEIGHT) = (32, 480);
+    let (WIDTH, HEIGHT) = (1, 480);
 
     // Here, we cheat. Let me explain.
     // We originally were generating a pixel per screen pixel (640*480 pixels), which is a lot.
@@ -73,44 +73,48 @@ fn main() {
     // and stretch it across the screen. Shader stuff works, because it works in screen space,
     // not pixel, so hurrah! We got it!
 
-    let mut image = mister_core::Image::new(WIDTH * HEIGHT);
-    image.create_channel(0.0f32); // R
-    image.create_channel(0.0f32); // G
-    image.create_channel(0.0f32); // B
-    image.create_channel(1.0f32); // A
+    use mister_core::ImageFormat;
+    use palette::Colora;
+    let mut image = mister_core::RgbaImage::new(WIDTH, HEIGHT);
 
     // Generate some sample image data
     // NOTE: API to be formalized
     let mut rng = rand::thread_rng();
-    for i in 0..3 {
+    for i in 0..WIDTH*HEIGHT {
         use rand::Rng;
-        let channel = image.channel_mut(i).unwrap();
-        // let mut value = rng.gen(); // Be slightly faster, We just want A value. We don't actually care what.
-        for x in 0..channel.len() {
-            channel[x] = rng.gen(); // each row is actually a "pixel"
-            // channel[x] = value; // each row is actually a "pixel"
-            // if x % WIDTH == 0 { value = rng.gen(); }
-        }
+        use palette::Colora;
+        let (y, x) = (i/WIDTH, i%WIDTH);
+        let (r, g, b, a) = rng.gen();
+        image.set_pixel(x, y, Colora::rgb(r, g, b, a));
     }
 
-    // Convert channels into pixels
-    let mut colors = vec![];
-    for i in 0..image.len() {
-        colors.push(palette::Rgba::new(image[0][i], image[1][i], image[2][i], image[3][i]));
-    }
-
-    // Convert linear pixels into gamma-corrected pixels
-    let colors: Vec<palette::pixel::Srgb> = colors.into_iter().map(|x| x.into()).collect::<Vec<_>>();
+    // // Convert channels into pixels
+    // let mut colors = vec![];
+    // for i in 0..image.len() {
+    //     colors.push(palette::Rgba::new(image[0][i], image[1][i], image[2][i], image[3][i]));
+    // }
+    //
+    // // Convert linear pixels into gamma-corrected pixels
+    // let colors: Vec<palette::pixel::Srgb> = colors.into_iter().map(|x| x.into()).collect::<Vec<_>>();
+    // TODO Create an SRGBImage convertion and format, for sRGB stuff
 
     use gfx::texture::{Kind, AaMode, FilterMethod, SamplerInfo, WrapMode};
     use gfx::format::Rgba32F;
 
     // Upload pixel data to a texture
-    let data: Vec<[u32; 4]> = colors.iter().map(|x| [x.red.to_u32(), x.green.to_u32(), x.blue.to_u32(), x.alpha.to_u32()]).collect::<Vec<_>>();
+    // let data: Vec<[u32; 4]> = colors.iter().map(|x| [x.red.to_u32(), x.green.to_u32(), x.blue.to_u32(), x.alpha.to_u32()]).collect::<Vec<_>>();
+    let data: Vec<[u32; 4]> = image.data().iter().map(|x| [x[0].to_u32(), x[1].to_u32(), x[2].to_u32(), x[3].to_u32()]).collect();
     // let data: Vec<[u32; 4]> = colors.iter().map(|x| [(x.red.to_u32() + x.green.to_u32() + x.blue.to_u32()) / 3, 0, 0, x.alpha.to_u32()]).collect::<Vec<_>>();
     // let (tex, texview) = factory.create_texture_immutable_u8::<Rgba8>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
     let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
     let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
+
+    // Create data to draw
+    let mut data = rgb::Data {
+        vbuf: buf.clone(),
+        out: rtv.clone(),
+        picture: (texview.clone(), sampler.clone())
+    };
 
     let mut view_update = vec![];
     'system: loop {
@@ -130,15 +134,9 @@ fn main() {
         }
 
         for _ in view_update.drain(0..) {
-            gfx_window::update_views(&mut window, &mut rtv, &mut stv)
+            gfx_window::update_views(&mut window, &mut rtv, &mut stv);
+            data.out = rtv.clone();
         }
-
-        // Create data to draw
-        let data = rgb::Data {
-            vbuf: buf.clone(),
-            out: rtv.clone(),
-            picture: (texview.clone(), sampler.clone())
-        };
 
         let mut enc: gfx::Encoder<gfx_gl::Resources, _> = factory.create_command_buffer().into();
 

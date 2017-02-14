@@ -48,19 +48,19 @@ impl<T: Clone + Debug> Channel<T> {
     }
 
     /// Retrieve value at index `i`
-    pub fn index(&self, i: usize) -> Option<&T> {
+    pub fn get(&self, i: usize) -> Option<&T> {
         self.data.get(i)
     }
 
     /// Retrieve value at index `i` mutably
-    pub fn index_mut(&mut self, i: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, i: usize) -> Option<&mut T> {
         self.data.get_mut(i)
     }
 
     /// Retrieve value at index `i` as a clone (non-reference)
-    #[deprecated(since="0.0.1", note="Prefer index(i).clone() instead")]
-    pub fn index_clone(&self, i: usize) -> Option<T> {
-        self.index(i).cloned()
+    #[deprecated(since="0.0.1", note="Prefer get(i).cloned() instead")]
+    pub fn get_clone(&self, i: usize) -> Option<T> {
+        self.get(i).cloned()
     }
 
     /// Resize channel to `new_len`
@@ -86,14 +86,14 @@ impl<T: Clone + Debug> Channel<T> {
 impl<T: Clone + Debug> Index<usize> for Channel<T> {
     type Output = T;
     fn index(&self, i: usize) -> &T {
-        self.index(i).unwrap()
+        self.get(i).unwrap()
     }
 }
 
 // NOTE that Index implementations PANIC at failure
 impl<T: Clone + Debug> IndexMut<usize> for Channel<T> {
     fn index_mut(&mut self, i: usize) -> &mut T {
-        self.index_mut(i).unwrap()
+        self.get_mut(i).unwrap()
     }
 }
 
@@ -110,7 +110,7 @@ impl<'a, T: Clone + Debug + 'a> Iterator for ChannelIterator<'a, T> {
         if self.at - 1 >= self.chan.len() {
             None
         } else {
-            self.chan.index(self.at-1)
+            self.chan.get(self.at-1)
         }
     }
 
@@ -193,101 +193,6 @@ impl<T: Clone + Debug> IndexMut<usize> for Image<T> {
     }
 }
 
-use palette;
-use std::marker;
-
-/// An interface that all Image interpreters must use.
-pub trait ImageFormat<T: Clone + Debug> {
-    /// Gets the underlying image mutably
-    fn image_mut(&mut self) -> &mut Image<T>;
-    /// Gets the underlying image
-    fn image(&self) -> &Image<T>;
-    /// Gets the size of the image (in width and height)
-    ///
-    /// # Examples:
-    ///
-    /// ```rust
-    /// # extern crate palette;
-    /// # extern crate mister_core;
-    /// #
-    /// # struct EmptyFormat {
-    /// #    i: mister_core::Image<f32>,
-    /// #    size: (usize, usize)
-    /// # }
-    /// #
-    /// # impl mister_core::image::ImageFormat<f32> for EmptyFormat {
-    /// #    fn image_mut(&mut self) -> &mut mister_core::Image<f32> { &mut self.i }
-    /// #    fn image(&self) -> &mister_core::Image<f32> { &self.i }
-    /// #    fn size(&self) -> (usize, usize) { self.size }
-    /// #    fn pixel(&self, x: usize, y: usize) -> Option<palette::Colora> { None }
-    /// # }
-    /// # fn main() {
-    /// use mister_core::image::{Image, ImageFormat};
-    /// // An example format that is simply meant to wrap the size
-    /// let format = EmptyFormat { i: Image::new(0), size: (10, 10) };
-    ///
-    /// let (width, height) = format.size();
-    /// assert_eq!(width, 10);
-    /// assert_eq!(height, 10);
-    /// # }
-    /// ```
-    fn size(&self) -> (usize, usize);
-
-    /// Returns the pixel at the specified location
-    fn pixel(&self, x: usize, y: usize) -> Option<palette::Colora>;
-    /// Returns an iterator over all pixels of this image
-    fn pixels(&self) -> PixelIterator<T> where Self: marker::Sized { PixelIterator { source: self, index: 0 } }
-}
-
-/// An interface for image formats that allows for modification
-pub trait MutableImageFormat<T: Clone + Debug>: ImageFormat<T> {
-    /// The format that the format uses to set its channels
-    type InternalFormat; // TODO Find a better way to do these
-    /// Type returned on error
-    type Error;
-    /// Returns the pixel at the specified location mutably
-    fn pixel_mut(&mut self, x: usize, y: usize) -> Option<Box<PixelWrapper<T, Self::InternalFormat, Self::Error>>>;
-}
-
-/// Provides access to a pixel for both reading and writing
-// IMPL NOTE: Might use RwLock
-pub trait PixelWrapper<'a, T: Clone + Debug, F, E> {
-    /// Read the pixel
-    fn read(&self) -> palette::Colora;
-    /// Write to the pixel
-    fn write(&mut self, f: F) -> Result<(), E>;
-}
-
-/// Iterates over the pixels of an image
-pub struct PixelIterator<'a, T: 'a + Clone + Debug> {
-    source: &'a ImageFormat<T>,
-    index: usize,
-    // phantom: marker::PhantomData<T>
-}
-
-impl<'a, T: Clone + Debug> Iterator for PixelIterator<'a, T> {
-    type Item = palette::Colora;
-    fn next(&mut self) -> Option<palette::Colora> {
-        let (width, height) = self.source.size();
-        let (x, y) = (self.index / width, self.index % width);
-        if y > height {
-            return None
-        } else if x > width {
-            unreachable!("Math is now wonky!");
-        }
-
-        self.index += 1;
-        self.source.pixel(x, y)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (width, height) = self.source.size();
-        let size = width * height;
-        (size, Some(size))
-    }
-}
-impl<'a, T: Clone + Debug + 'a> ExactSizeIterator for PixelIterator<'a, T> {}
-
 
 #[cfg(test)]
 mod tests {
@@ -324,6 +229,19 @@ mod tests {
         new_channel.write(4, 21);
         assert_eq!(len, new_channel.len()); // length cannot change with write!
         assert_eq!(new_channel.iter().cloned().collect::<Vec<_>>(), vec![0,0,0,0,21,0,0,0,0,0]);
+    }
+
+    #[test]
+    fn channel_getting() {
+        let mut new_channel = Channel::new(0u8, 10);
+        // So writing is simple, but we can only do it 1 item at a time.
+        // TODO: Make it so that blocks can be written to a channel
+        let len = new_channel.len();
+        new_channel.write(4, 21);
+        assert_eq!(len, new_channel.len()); // length cannot change with write!
+        assert_eq!(new_channel.get(4).cloned(), Some(21));
+        new_channel.get_mut(4).map(|x| *x = 42);
+        assert_eq!(new_channel.get(4).cloned(), Some(42));
     }
 
     #[test]
