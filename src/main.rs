@@ -82,10 +82,16 @@ fn main() {
     let mut rng = rand::thread_rng();
     for i in 0..WIDTH*HEIGHT {
         use rand::Rng;
-        use palette::Colora;
+        use palette::{Colora, Rgba};
+        use palette::pixel::Srgb;
         let (y, x) = (i/WIDTH, i%WIDTH);
         let (r, g, b, a) = rng.gen();
-        image.set_pixel(x, y, Colora::rgb(r, g, b, a));
+        /*
+         Old buggy behavior (as in OOOOLD): Treat sRGB values as RGB values, and sRGB 'em again
+        let rgb: Srgb = Rgba::new(r, g, b, a).into();
+        image.set_pixel(x, y, Colora::rgb(rgb.red, rgb.green,rgb.blue, rgb.alpha)).unwrap();
+        */
+       image.set_pixel(x, y, Colora::rgb(r, g, b, a)).unwrap()
     }
 
     // // Convert channels into pixels
