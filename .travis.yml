@@ -6,6 +6,4 @@ rust:
 matrix:
   allow_failures:
     rust: nightly
-script: |
-  cargo build --verbose
-  cargo test -p mister-core --verbose
+script: ./scripts/build.sh
