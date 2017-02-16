@@ -35,6 +35,7 @@ nalgebra = "0.11"
 # TODO: Add slog outputs
 
 mister-core = {path = "mister_core"}
+mister-gui = {path = "mister_gui"}
 
 [[bin]]
 name = "mister"

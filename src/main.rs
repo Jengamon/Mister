@@ -10,8 +10,8 @@ extern crate rand;
 extern crate palette;
 extern crate conrod;
 extern crate nalgebra as na;
-
 extern crate mister_core;
+extern crate mister_gui;
 
 use gfx::format::{DepthStencil, Rgba8, Srgba8};
 

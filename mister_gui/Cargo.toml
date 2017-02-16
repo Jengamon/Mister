@@ -1,0 +1,8 @@
+[package]
+name = "mister-gui"
+version = "0.1.0"
+authors = ["Bob Hostern <bob.hostern@gmail.com>"]
+
+[dependencies]
+palette = "^0.2"
+cassowary = "^0.2"
