@@ -9,6 +9,7 @@ extern crate rusttype;
 extern crate rand;
 extern crate palette;
 extern crate conrod;
+extern crate nalgebra as na;
 
 extern crate mister_core;
 
@@ -24,6 +25,7 @@ gfx_defines! {
     pipeline rgb {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         picture: gfx::TextureSampler<[f32; 4]> = "Texture",
+        // mvp: gfx::Global<[[f32; 3]; 3]> = "MVP",
         out: gfx::RenderTarget<Srgba8> = "Color",
     }
 }
@@ -115,10 +117,13 @@ fn main() {
     let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
     let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
 
+    // TODO Add model-view-projection matrix
+
     // Create data to draw
     let mut data = rgb::Data {
         vbuf: buf.clone(),
         out: rtv.clone(),
+        // mvp:
         picture: (texview.clone(), sampler.clone())
     };
 
