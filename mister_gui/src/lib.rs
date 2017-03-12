@@ -1,17 +1,13 @@
 extern crate palette;
 extern crate nalgebra as na;
 extern crate cassowary;
+extern crate gfx_core;
+
+mod util;
+#[cfg(test)] mod tests;
 
 use palette::{Colora};
-use na::{Point2};
-
-//TODO Make util module and put this there
-/// Represents a piece of screen
-#[derive(Clone, Copy, Debug)]
-pub struct ScreenRect {
-    bottom_left: na::Point2<f32>,
-    top_right: na::Point2<f32>
-}
+use util::{ScreenRect};
 
 // Meant for a GUI application
 // meaning we should have control of the program loop
@@ -19,7 +15,13 @@ pub struct ScreenRect {
 /// A virtual interface that is used to draw things
 pub trait Painter {
     fn draw_color_rect(&mut self, Colora, ScreenRect);
+
+    fn flip(&mut self);
 }
+
+//struct GfxPainter<R: gfx_core::Resources> {
+//    enc:
+//}
 
 use std::rc::Rc;
 type WidgetPtr = Rc<Box<Widget>>;
@@ -38,31 +40,31 @@ trait Container {
     fn add_to_children(&mut self, WidgetPtr); // Adds a child to the child list
 }
 
-struct GfxPainter {
-    enc:
-}
+// struct GfxPainter {
+//     enc:
+// }
 
-impl GfxPainter {
-    fn draw_color_rect(&mut self, Colora, ScreenRect) {
-        unimplemented!()
-    }
-}
+// impl GfxPainter {
+//     fn draw_color_rect(&mut self, Colora, ScreenRect) {
+//         unimplemented!()
+//     }
+// }
 
 // Mother of all things widget-y
 // IMPL NOTE: The PARENT sizes the children when drawn
 struct Window {
-    area: ScreenRect,
+    // painter: Box<Painter>,
+    // TODO Store transform
 }
 
 impl Window {
-    fn draw(&self, p: &mut Painter) {
-        unimplemented!();
+    fn create() -> Window {
+        Window {
+            // painter: p,
+        }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
+    fn draw<P: Painter>(&self, painter: &mut P) {
+        unimplemented!();
     }
 }

@@ -6,4 +6,5 @@ authors = ["Bob Hostern <bob.hostern@gmail.com>"]
 [dependencies]
 palette = "^0.2"
 cassowary = "^0.2"
-nalgebra = "0.11"
+nalgebra = "^0.11"
+gfx_core = "^0.6"
