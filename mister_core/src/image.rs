@@ -66,12 +66,7 @@ impl<T: Clone + Debug> Channel<T> {
     /// Resize channel to `new_len` and returns it
     // NOTE Requires ownership to prevent resizing borrows
     pub fn resize(mut self, new_len: usize) -> Channel<T> {
-        self.data.truncate(new_len);
-        if self.len() < new_len {
-            let data_len = new_len - self.data.len();
-            let default = self.default.clone();
-            self.data.extend_from_slice(&vec![default; data_len])
-        }
+        self._resize(new_len);
         self
     }
 
