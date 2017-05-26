@@ -23,7 +23,7 @@ void main() {
   }
 
   vec4 tColor = v_color * texture2D(Texture, v_tex_coords);
-  tColor.a = 0.4;
+  tColor.a = 0.8;
   Color = mix(Color, tColor, tColor.a);
 
 	// float c = (Color.r + Color.g + Color.b) / 3;
