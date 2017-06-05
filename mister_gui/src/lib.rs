@@ -82,8 +82,10 @@ pub trait Realizer {
 mod gfxr {
     use super::{Realizer, Mapper, Primitive, Primitives};
     use palette::{Colora};
-    use gfx::{Resources, CommandBuffer, Encoder, VertexBuffer, Global, RenderTarget, Rgba8};
-
+    use gfx::{Resources, CommandBuffer, Encoder, VertexBuffer, Global, RenderTarget};
+		use gfx::format::Rgba8;
+		use gfx;
+		
     gfx_defines!{
         vertex Vertex {
             pos: [f32; 2] = "pos",
