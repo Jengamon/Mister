@@ -6,9 +6,9 @@ language: rust
 services: docker
 sudo: required
 rust:
-	- stable
-	- beta
-	- nightly
+  - stable
+  - beta
+  - nightly
 
 # TODO Rust builds on stable by default, this can be
 # overridden on a case by case basis down below.
