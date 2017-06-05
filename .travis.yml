@@ -19,6 +19,9 @@ env:
     - CRATE_NAME=mister
 
 matrix:
+  fast_finish: true
+  allow_failures:
+    rust: nightly
   # TODO These are all the build jobs. Adjust as necessary. Comment out what you
   # don't need
   include:
@@ -56,9 +59,6 @@ matrix:
     - env: TARGET=x86_64-apple-darwin
       os: osx
       rust: nightly
-  fast_finish: true
-  allow_failures:
-    rust: nightly
 
 before_install: set -e
 
