@@ -55,7 +55,7 @@ matrix:
       rust: nightly
     - env: TARGET=x86_64-apple-darwin
       os: osx
-rust: nightly
+      rust: nightly
   fast_finish: true
   allow_failures:
     rust: nightly
