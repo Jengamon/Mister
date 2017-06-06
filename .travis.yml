@@ -44,11 +44,11 @@ deploy:
   provider: releases
   api_key:
     secure: XOgVrDWXnbb5ulJjrqGP8Jns396oqVAT4dz1o9qTuWvMtKgo7JGLA69h9cXFxmiCRwBs2eAQEeWgw2VMrYeXnBZJuKm6+Z8tIC367MrYjL6/GHbsRX48WC/VYVfB4D6Go+8H/9APgAPk7f1nkpWEEMdxzu8QXYeAF3g5wY4u8DF/ULYLg3ukPc2kgoGmoxBrUVwOTJPp03l+MqlNVt/Exglr6s7kspSzrEQ/dWvnc3pLSpPGmMqkY9TWQZKYj19vG5IXRus/zWg4fyXLxafBAIu2Z3fMneZE8x1MsU6SA0hSv6fnUWrRVu5fkJpjXuYBXH7iyFhZfq4XKgSW66emPeX7h1VM+XqHAkRWF8AkVZR2Qy3ElkXtW2Qtf/PNVudMJFV+JCN0Ow+Pj8xXYdjQY4J6xlGFKM1oUCF7cPEKptdLVgK3Iu5Ptm2OyGzkIbUK4DePdQwDZHqA9K95W5upW66CyQgnSUQJBGHAr38Nmj/r9QVZjP3Tchc3Gayo/4FMggydVQMj+u0D7c/HCbR5nZmi+XjPtkpKfx3xl6zGWWB0r0uDX1GodEGriLpUANJ/G5ZfBq4V78EstHuKpFR353zuk+QVL7bdWE+Jc83AtVjZL//MVxwFXYMlW49pjI11kdWVXajUvrhh6HZZVq//bRgTUasFrv8iPneXT/h0m7w=
-  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
+  file: "$CRATE_NAME-$TRAVIS_TAG-$TARGET.*"
   skip_cleanup: true
   on:
     repo: Jengamon/Mister
-    tags: false
+    tags: true
     all_branches: true
 cache: cargo
 before_cache:
