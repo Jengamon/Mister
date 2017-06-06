@@ -3,12 +3,23 @@ use super::{Channel, Image};
 use palette::Colora; // Use Colora as a generic color.
 use std::fmt::Debug;
 
+// TODO error_chain this!
+/// Indicates errors for image formats
+#[derive(Clone, Debug, Copy)]
+pub enum ImageFormatError<T> {
+    /// The requested pixel location was outside the image
+    OutOfBounds(usize, usize),
+    /// This channel doesn't have a value at that location
+    MissingData(T, usize, usize),
+}
+
 /// Describes a general interface for formatted images
 pub trait ImageFormat<T: Clone + Debug> {
     /// A struct that can describe the channels available to this image
     type ChannelName;
-    ///. The type of error accessing a pixel can return
-    type PixelError;
+    // TODO Use assoc. type defaults when they are stable
+    // /// The type of error accessing a pixel can return
+    // type PixelError = ImageFormatError<Self::ChannelName>;
     /// The number of channels this image uses
     fn channel_count(&self) -> usize;
     // NOTE Confuing name QUESTION How do we fix?
@@ -27,9 +38,14 @@ pub trait ImageFormat<T: Clone + Debug> {
     fn height(&self) -> usize;
 
     /// Gets color at (x, y)
-    fn pixel(&self, x: usize, y: usize) -> Result<Colora, Self::PixelError>;
+    fn pixel(&self, x: usize, y: usize) -> Result<Colora, ImageFormatError<Self::ChannelName>>;
     /// Sets pixel at (x, y)
-    fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), Self::PixelError>;
+    fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), ImageFormatError<Self::ChannelName>>;
+
+    // /// Gets color at (x, y)
+    // fn pixel(&self, x: usize, y: usize) -> Result<Colora, Self::PixelError>;
+    // /// Sets pixel at (x, y)
+    // fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), Self::PixelError>;
     /// Exposes the image as chunks of data
     fn data(&self) -> Vec<Vec<T>>;
     /// Flat maps all the data
@@ -126,15 +142,8 @@ impl RgbaImage {
     channel!(RgbaImage, mutable alpha using RgbaChannel::Alpha as alpha_mut);
 }
 
-// TODO error_chain this!
-/// Indicates errors for RGBA images
-#[derive(Clone, Debug, Copy)]
-pub enum RgbaImageError {
-    /// The requested pixel location was outside the image
-    OutOfBounds(usize, usize),
-    /// (An internal error) This channel doesn't have a value at that location
-    MissingData(RgbaChannel, usize, usize),
-}
+/// Errors for RGBA images
+pub type RgbaImageError = ImageFormatError<RgbaChannel>;
 
 // Our RgbaImage uses channels to store pixel information like this
 // 0 ----------------> width-1
@@ -144,7 +153,6 @@ pub enum RgbaImageError {
 // (height-1)*width -> height*width-1
 impl ImageFormat<f32> for RgbaImage {
     type ChannelName = RgbaChannel;
-    type PixelError = RgbaImageError;
 
     fn channel_count(&self) -> usize { self.image.count() }
     fn set_channel_visible(&mut self, c: &RgbaChannel, enabled: bool) {
@@ -165,44 +173,44 @@ impl ImageFormat<f32> for RgbaImage {
 
     fn pixel(&self, x: usize, y: usize) -> Result<Colora, RgbaImageError> {
         if x >= self.width() || y >= self.height() {
-            return Err(RgbaImageError::OutOfBounds(x, y))
+            return Err(ImageFormatError::OutOfBounds(x, y))
         }
         let loc = y*self.width() + x;
         let r = if self.is_red_visible() {
-            *self.red().get(loc).ok_or(RgbaImageError::MissingData(RgbaChannel::Red, x, y))?
+            *self.red().get(loc).ok_or(ImageFormatError::MissingData(RgbaChannel::Red, x, y))?
         } else {
             0.0
         };
         let g = if self.is_green_visible() {
-            *self.green().get(loc).ok_or(RgbaImageError::MissingData(RgbaChannel::Green, x, y))?
+            *self.green().get(loc).ok_or(ImageFormatError::MissingData(RgbaChannel::Green, x, y))?
         } else {
             0.0
         };
         let b = if self.is_blue_visible() {
-            *self.blue().get(loc).ok_or(RgbaImageError::MissingData(RgbaChannel::Blue, x, y))?
+            *self.blue().get(loc).ok_or(ImageFormatError::MissingData(RgbaChannel::Blue, x, y))?
         } else {
             0.0
         };
         let a = if self.is_alpha_visible() {
-            *self.alpha().get(loc).ok_or(RgbaImageError::MissingData(RgbaChannel::Alpha, x, y))?
+            *self.alpha().get(loc).ok_or(ImageFormatError::MissingData(RgbaChannel::Alpha, x, y))?
         } else {
             1.0
         };
         Ok(Colora::rgb(r, g, b, a))
     }
 
-    fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), Self::PixelError> {
+    fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), RgbaImageError> {
         use palette::Rgba;
 
         if x >= self.width() || y >= self.height() {
-            return Err(RgbaImageError::OutOfBounds(x, y))
+            return Err(ImageFormatError::OutOfBounds(x, y))
         }
         let loc = y*self.width() + x;
         let (r, g, b, a) = Into::<Rgba>::into(c).to_pixel();
-        self.red_mut().get_mut(loc).map(|x| *x = r).ok_or(RgbaImageError::MissingData(RgbaChannel::Red, x, y))?;
-        self.green_mut().get_mut(loc).map(|x| *x = g).ok_or(RgbaImageError::MissingData(RgbaChannel::Green, x, y))?;
-        self.blue_mut().get_mut(loc).map(|x| *x = b).ok_or(RgbaImageError::MissingData(RgbaChannel::Blue, x, y))?;
-        self.alpha_mut().get_mut(loc).map(|x| *x = a).ok_or(RgbaImageError::MissingData(RgbaChannel::Alpha, x, y))?;
+        self.red_mut().get_mut(loc).map(|x| *x = r).ok_or(ImageFormatError::MissingData(RgbaChannel::Red, x, y))?;
+        self.green_mut().get_mut(loc).map(|x| *x = g).ok_or(ImageFormatError::MissingData(RgbaChannel::Green, x, y))?;
+        self.blue_mut().get_mut(loc).map(|x| *x = b).ok_or(ImageFormatError::MissingData(RgbaChannel::Blue, x, y))?;
+        self.alpha_mut().get_mut(loc).map(|x| *x = a).ok_or(ImageFormatError::MissingData(RgbaChannel::Alpha, x, y))?;
         Ok(())
     }
 

@@ -63,8 +63,17 @@ impl<T: Clone + Debug> Channel<T> {
         self.get(i).cloned()
     }
 
-    /// Resize channel to `new_len`
-    pub fn resize(&mut self, new_len: usize) {
+    /// Resize channel to `new_len` and returns it
+    // NOTE Requires ownership to prevent resizing borrows
+    pub fn resize(mut self, new_len: usize) -> Channel<T> {
+        self._resize(new_len);
+        self
+    }
+
+
+    /// Resize channel to `new_len` and returns it
+    // NOTE Only requires a mutable *borrow*
+    fn _resize(&mut self, new_len: usize) {
         self.data.truncate(new_len);
         if self.len() < new_len {
             let data_len = new_len - self.data.len();
@@ -174,7 +183,7 @@ impl<T: Clone + Debug> Image<T> {
     pub fn resize(&mut self, new_len: usize) {
         self.len = new_len;
         for c in self.channels.iter_mut() {
-            c.resize(new_len);
+            c._resize(new_len);
         }
     }
 }
@@ -216,7 +225,7 @@ mod tests {
         // Ok, capacity is the amount of data a channel CAN hold WITHOUT REALLOCATING,
         // but its size is the amount of data it SHOULD hold.
         // Resizing may change the capacity, but it MUST change the size.
-        new_channel.resize(60);
+        new_channel = new_channel.resize(60);
         assert_eq!(new_channel.len(), 60);
     }
 

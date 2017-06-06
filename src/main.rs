@@ -9,8 +9,9 @@ extern crate rusttype;
 extern crate rand;
 extern crate palette;
 extern crate conrod;
-
+extern crate nalgebra as na;
 extern crate mister_core;
+extern crate mister_gui;
 
 use gfx::format::{DepthStencil, Rgba8, Srgba8};
 
@@ -24,6 +25,7 @@ gfx_defines! {
     pipeline rgb {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         picture: gfx::TextureSampler<[f32; 4]> = "Texture",
+        // mvp: gfx::Global<[[f32; 3]; 3]> = "MVP",
         out: gfx::RenderTarget<Srgba8> = "Color",
     }
 }
@@ -82,10 +84,16 @@ fn main() {
     let mut rng = rand::thread_rng();
     for i in 0..WIDTH*HEIGHT {
         use rand::Rng;
-        use palette::Colora;
+        use palette::{Colora, Rgba};
+        use palette::pixel::Srgb;
         let (y, x) = (i/WIDTH, i%WIDTH);
         let (r, g, b, a) = rng.gen();
-        image.set_pixel(x, y, Colora::rgb(r, g, b, a));
+        /*
+         Old buggy behavior (as in OOOOLD): Treat sRGB values as RGB values, and sRGB 'em again
+        let rgb: Srgb = Rgba::new(r, g, b, a).into();
+        image.set_pixel(x, y, Colora::rgb(rgb.red, rgb.green,rgb.blue, rgb.alpha)).unwrap();
+        */
+       image.set_pixel(x, y, Colora::rgb(r, g, b, a)).unwrap()
     }
 
     // // Convert channels into pixels
@@ -109,10 +117,13 @@ fn main() {
     let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
     let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
 
+    // TODO Add model-view-projection matrix
+
     // Create data to draw
     let mut data = rgb::Data {
         vbuf: buf.clone(),
         out: rtv.clone(),
+        // mvp:
         picture: (texview.clone(), sampler.clone())
     };
 

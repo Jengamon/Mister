@@ -14,10 +14,12 @@ gfx_device_gl = "^0.13"
 glutin = "^0.7"
 gfx_window_glutin = "^0.14"
 slog = "^1.5"
+slog-term = "^1.5"
 rusttype = "^0.2"
 palette = "^0.2"
 rand = "0.3"
 conrod = "^0.51"
+nalgebra = "0.11"
 
 # TODO: Add palette-rs, image, backtrace-rs, error-chain, clap, byteorder | serde
 # Byteorder is if we want to write the format ourselves
@@ -33,6 +35,7 @@ conrod = "^0.51"
 # TODO: Add slog outputs
 
 mister-core = {path = "mister_core"}
+mister-gui = {path = "mister_gui"}
 
 [[bin]]
 name = "mister"
