@@ -7,6 +7,7 @@ extern crate gfx;
 
 mod util;
 #[cfg(test)] mod tests;
+mod texture_mode; // TODO Rename this.
 
 use palette::{Colora};
 use util::{ScreenRect};

@@ -477,6 +477,7 @@ version = "0.1.0"
 dependencies = [
  "cassowary 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mister-core 0.1.0",
  "nalgebra 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "palette 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
