@@ -1,8 +1,0 @@
-[package]
-name = "mister-core"
-version = "0.1.0"
-authors = ["Bob Hostern <bob.hostern@gmail.com>"]
-
-[dependencies]
-byteorder = "^1.0"
-palette = "^0.2"

@@ -15,10 +15,10 @@ glutin = "^0.7"
 gfx_window_glutin = "^0.14"
 slog = "^1.5"
 slog-term = "^1.5"
-rusttype = "^0.2"
+#rusttype = "^0.2"
 palette = "^0.2"
 rand = "0.3"
-conrod = "^0.55"
+#conrod = "^0.55"
 nalgebra = "0.11"
 
 # TODO: Add palette-rs, image, backtrace-rs, error-chain, clap, byteorder | serde
@@ -34,8 +34,8 @@ nalgebra = "0.11"
 # IMPORTANT NOTE (due to image): Import/export plugins must POTENTIALLY support more than one format.
 # TODO: Add slog outputs
 
-mister-core = {path = "mister_core"}
-mister-gui = {path = "mister_gui"}
+#mister-core = {path = "mister_core"}
+#mister-gui = {path = "mister_gui"}
 
 [[bin]]
 name = "mister"
