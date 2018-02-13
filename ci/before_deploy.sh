@@ -21,7 +21,7 @@ main() {
     cross rustc --bin mister --target $TARGET --release -- -C lto
 
     # TODO Update this to package the right artifacts
-    cp target/$TARGET/release/mister $stage/
+    cp target/$TARGET/release/hello $stage/
 
     cd $stage
     tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *

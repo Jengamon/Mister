@@ -1,63 +1,128 @@
+# Based on the "trust" template v0.1.2
+# https://github.com/japaric/trust/tree/v0.1.2
+
 dist: trusty
 language: rust
 services: docker
 sudo: required
+
+# TODO Rust builds on stable by default, this can be
+# overridden on a case by case basis down below.
+
 env:
   global:
-  - CRATE_NAME=mister
+    # TODO Update this to match the name of your project.
+    - CRATE_NAME=trust
+
 matrix:
-  fast_finish: true
-  allow_failures:
-    rust: nightly
+  # TODO These are all the build jobs. Adjust as necessary. Comment out what you
+  # don't need
   include:
-  - env: TARGET=i686-unknown-linux-gnu
-  - env: TARGET=i686-unknown-linux-musl
-  - env: TARGET=x86_64-unknown-linux-gnu
-  - env: TARGET=x86_64-unknown-linux-musl
-  - env: TARGET=x86_64-apple-darwin
-    os: osx
-  - env: TARGET=i686-unknown-freebsd DISABLE_TESTS=1
-  - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
-  - env: TARGET=aarch64-unknown-linux-gnu
-  - env: TARGET=armv7-unknown-linux-gnueabihf
-  - env: TARGET=mips-unknown-linux-gnu
-  - env: TARGET=mips64-unknown-linux-gnuabi64
-  - env: TARGET=mipsel-unknown-linux-gnu
-  - env: TARGET=powerpc64-unknown-linux-gnu
-  - env: TARGET=powerpc64le-unknown-linux-gnu
-  - env: TARGET=s390x-unknown-linux-gnu DISABLE_TESTS=1
-  - env: TARGET=x86_64-unknown-linux-gnu
-    rust: nightly
-  - env: TARGET=x86_64-apple-darwin
-    os: osx
-    rust: nightly
-before_install: set -e
+    # Android
+    #- env: TARGET=aarch64-linux-android DISABLE_TESTS=1
+    #- env: TARGET=arm-linux-androideabi DISABLE_TESTS=1
+    #- env: TARGET=armv7-linux-androideabi DISABLE_TESTS=1
+    #- env: TARGET=i686-linux-android DISABLE_TESTS=1
+    #- env: TARGET=x86_64-linux-android DISABLE_TESTS=1
+
+    # iOS
+    #- env: TARGET=aarch64-apple-ios DISABLE_TESTS=1
+    #  os: osx
+    #- env: TARGET=armv7-apple-ios DISABLE_TESTS=1
+    #  os: osx
+    #- env: TARGET=armv7s-apple-ios DISABLE_TESTS=1
+    #  os: osx
+    #- env: TARGET=i386-apple-ios DISABLE_TESTS=1
+    #  os: osx
+    #- env: TARGET=x86_64-apple-ios DISABLE_TESTS=1
+    #  os: osx
+
+    # Linux
+    #- env: TARGET=aarch64-unknown-linux-gnu
+    - env: TARGET=arm-unknown-linux-gnueabi
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+    - env: TARGET=i686-unknown-linux-gnu
+    - env: TARGET=i686-unknown-linux-musl
+    #- env: TARGET=mips-unknown-linux-gnu
+    #- env: TARGET=mips64-unknown-linux-gnuabi64
+    #- env: TARGET=mips64el-unknown-linux-gnuabi64
+    #- env: TARGET=mipsel-unknown-linux-gnu
+    - env: TARGET=powerpc-unknown-linux-gnu
+    - env: TARGET=powerpc64-unknown-linux-gnu
+    - env: TARGET=powerpc64le-unknown-linux-gnu
+    #- env: TARGET=s390x-unknown-linux-gnu DISABLE_TESTS=1
+    #- env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-musl
+
+    # OSX
+    #- env: TARGET=i686-apple-darwin
+    #  os: osx
+    #- env: TARGET=x86_64-apple-darwin
+    #  os: osx
+
+    # *BSD
+    - env: TARGET=i686-unknown-freebsd DISABLE_TESTS=1
+    - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
+    #- env: TARGET=x86_64-unknown-netbsd DISABLE_TESTS=1
+
+    # Windows
+    - env: TARGET=x86_64-pc-windows-gnu
+
+    # Bare metal
+    # These targets don't support std and as such are likely not suitable for
+    # most crates.
+    # - env: TARGET=thumbv6m-none-eabi
+    # - env: TARGET=thumbv7em-none-eabi
+    # - env: TARGET=thumbv7em-none-eabihf
+    # - env: TARGET=thumbv7m-none-eabi
+
+    # Testing other channels
+    #- env: TARGET=x86_64-unknown-linux-gnu
+    #  rust: nightly
+    #- env: TARGET=x86_64-apple-darwin
+    #  os: osx
+    #  rust: nightly
+
+before_install:
+  - set -e
+  - rustup self update
+
 install:
-- sh ci/install.sh
-- source ~/.cargo/env || true
+  - sh ci/install.sh
+  - source ~/.cargo/env || true
+
 script:
-- bash ci/script.sh
+  - bash ci/script.sh
+
 after_script: set +e
+
 before_deploy:
-- sh ci/before_deploy.sh
+  - sh ci/before_deploy.sh
+
 deploy:
-  provider: releases
   api_key:
-    secure: XOgVrDWXnbb5ulJjrqGP8Jns396oqVAT4dz1o9qTuWvMtKgo7JGLA69h9cXFxmiCRwBs2eAQEeWgw2VMrYeXnBZJuKm6+Z8tIC367MrYjL6/GHbsRX48WC/VYVfB4D6Go+8H/9APgAPk7f1nkpWEEMdxzu8QXYeAF3g5wY4u8DF/ULYLg3ukPc2kgoGmoxBrUVwOTJPp03l+MqlNVt/Exglr6s7kspSzrEQ/dWvnc3pLSpPGmMqkY9TWQZKYj19vG5IXRus/zWg4fyXLxafBAIu2Z3fMneZE8x1MsU6SA0hSv6fnUWrRVu5fkJpjXuYBXH7iyFhZfq4XKgSW66emPeX7h1VM+XqHAkRWF8AkVZR2Qy3ElkXtW2Qtf/PNVudMJFV+JCN0Ow+Pj8xXYdjQY4J6xlGFKM1oUCF7cPEKptdLVgK3Iu5Ptm2OyGzkIbUK4DePdQwDZHqA9K95W5upW66CyQgnSUQJBGHAr38Nmj/r9QVZjP3Tchc3Gayo/4FMggydVQMj+u0D7c/HCbR5nZmi+XjPtkpKfx3xl6zGWWB0r0uDX1GodEGriLpUANJ/G5ZfBq4V78EstHuKpFR353zuk+QVL7bdWE+Jc83AtVjZL//MVxwFXYMlW49pjI11kdWVXajUvrhh6HZZVq//bRgTUasFrv8iPneXT/h0m7w=
-  file: "$CRATE_NAME-$TRAVIS_TAG-$TARGET.*"
-  skip_cleanup: true
+    secure: "WlqAOGT9wm83Xf8mhBqtsSDXW6VcAy7R+yZYdaIwu0u/HfVuExHBdkSWpDaGrElS+QnjkJhldx2V9HWNqR3uffGcbJF/U9IvmvfItQuIX9nV0boHI0WyrhuieqfISbaNJ/ftDTZmokF/gW4rPfwSySVMg1NaXuGuXsTUVj8g16jIOT/7n8/Zgop/euD4aIDlyoTsihQMhoXTfxL25pobTuiuob4gc+77aKYuDyUfvRbOQ46Rgl8AktvpWHQVcMh6SF4IjeHwbqL07/kj/hv5AyApuyCF34fIvAhSIV4AqT11EuMsa8Vb4m2KA5LjGmQStvzf4ezRfn9ZxYB2WyoItFO1tA5kgUa+1w21wZ5jcn7NSgubCl/XTw/xdDFupsTzpKeuSUohuW3QFWg1y2jvt363dw0y8cLbowhJCpe06taF1cnUE2A/P3TbaDefms7wRW2XKrmBkahmmeYJj4T8DmvlCf+gNkvgDVhvDM13DtnMtpGN19Y0xl4k49xsaSzX7LkLDBDh+SuI6O4iKtqvirjy/tXTihb7kQdn2+h69hcqRYbo4HWlWJZGUunkJD8GscI/IwL84TOEnTHQP8p4AoKRe8WN5l1Ss5lz6rQPbVaxo/Gct3WZoKIsz5uKE4QW057G9dWEbF3CxH8r/9VJgPHryB60Pio5C/cYBja1xiI="
+  file_glob: true
+  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
   on:
     condition: $TRAVIS_RUST_VERSION = stable
     tags: true
+  provider: releases
+  skip_cleanup: true
+
 cache: cargo
 before_cache:
-- chmod -R a+r $HOME/.cargo
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+
 branches:
   only:
-  - /^v\\d+\\.\\d+\\.\\d+.*$/
-  - master
-  - staging
-  - trying
+    # release tags
+    - /^v\d+\.\d+\.\d+.*$/
+    - master
+    - staging
+    - trying
+
 notifications:
   email:
     on_success: never

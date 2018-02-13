@@ -1,58 +1,8 @@
-//! This modules wraps various image models, using image::Image as its backing.
-use super::{Channel, Image};
+use image::{Channel, Image};
 use palette::Colora; // Use Colora as a generic color.
-use std::fmt::Debug;
-
-// TODO error_chain this!
-/// Indicates errors for image formats
-#[derive(Clone, Debug, Copy)]
-pub enum ImageFormatError<T> {
-    /// The requested pixel location was outside the image
-    OutOfBounds(usize, usize),
-    /// This channel doesn't have a value at that location
-    MissingData(T, usize, usize),
-}
-
-/// Describes a general interface for formatted images
-pub trait ImageFormat<T: Clone + Debug> {
-    /// A struct that can describe the channels available to this image
-    type ChannelName;
-    // TODO Use assoc. type defaults when they are stable
-    // /// The type of error accessing a pixel can return
-    // type PixelError = ImageFormatError<Self::ChannelName>;
-    /// The number of channels this image uses
-    fn channel_count(&self) -> usize;
-    // NOTE Confuing name QUESTION How do we fix?
-    /// Enables/disables the specified channel
-    fn set_channel_visible(&mut self, &Self::ChannelName, bool);
-    /// Gets the "visibility" of the specified channel
-    fn is_channel_visible(&self, &Self::ChannelName) -> bool;
-    /// Gets an underlying channel
-    fn channel(&self, &Self::ChannelName) -> &Channel<T>;
-    /// Gets an underlying channel mutably
-    fn channel_mut(&mut self, &Self::ChannelName) -> &mut Channel<T>;
-
-    /// Gets the width of the image
-    fn width(&self) -> usize;
-    /// Gets the height of the image
-    fn height(&self) -> usize;
-
-    /// Gets color at (x, y)
-    fn pixel(&self, x: usize, y: usize) -> Result<Colora, ImageFormatError<Self::ChannelName>>;
-    /// Sets pixel at (x, y)
-    fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), ImageFormatError<Self::ChannelName>>;
-
-    // /// Gets color at (x, y)
-    // fn pixel(&self, x: usize, y: usize) -> Result<Colora, Self::PixelError>;
-    // /// Sets pixel at (x, y)
-    // fn set_pixel(&mut self, x: usize, y: usize, c: Colora) -> Result<(), Self::PixelError>;
-    /// Exposes the image as chunks of data
-    fn data(&self) -> Vec<Vec<T>>;
-    /// Flat maps all the data
-    fn flat_data(&self) -> Vec<T> {
-        self.data().iter().flat_map(|x| x).cloned().collect()
-    }
-}
+use super::{ImageFormat, ImageFormatError};
+use std::fmt::{Display, Debug, Formatter, Error};
+use std::error::Error as StdError;
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 /// Represents the channels of an RGBA image
@@ -65,6 +15,23 @@ pub enum RgbaChannel {
     Blue,
     /// Alpha channel
     Alpha
+}
+
+// got lower upper inclusive
+#[derive(Debug)]
+pub struct InvalidData<T: Debug>(T, T, T, bool);
+impl<T: Display + Debug> Display for InvalidData<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        if self.3 {
+            write!(f, "got {}, expected value in [{}, {}]", self.0, self.1, self.2)
+        } else {
+            write!(f, "got {}, expected value in ({}, {})", self.0, self.1, self.2)
+        }
+    }
+}
+
+impl<T: Display + Debug> StdError for InvalidData<T> {
+    fn description(&self) -> &str { "Invalid data" }
 }
 
 /// Stores an RGBA format image
@@ -153,6 +120,7 @@ pub type RgbaImageError = ImageFormatError<RgbaChannel>;
 // (height-1)*width -> height*width-1
 impl ImageFormat<f32> for RgbaImage {
     type ChannelName = RgbaChannel;
+    type ValidationError = InvalidData<f32>;
 
     fn channel_count(&self) -> usize { self.image.count() }
     fn set_channel_visible(&mut self, c: &RgbaChannel, enabled: bool) {
@@ -170,6 +138,16 @@ impl ImageFormat<f32> for RgbaImage {
 
     fn width(&self) -> usize { self.width }
     fn height(&self) -> usize { self.height }
+
+    fn validate(&self) -> Result<(), Self::ValidationError> {
+        for i in 0..self.image.count() {
+            let v = self.image.channel(i).unwrap().iter().find(|x| **x > 1.0 || **x < 0.0);
+            if let Some(v) = v {
+                return Err(InvalidData(*v, 0.0, 1.0, true));
+            }
+        }
+        Ok(())
+    }
 
     fn pixel(&self, x: usize, y: usize) -> Result<Colora, RgbaImageError> {
         if x >= self.width() || y >= self.height() {
