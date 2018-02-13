@@ -4,4 +4,4 @@ status = [
 ]
 # Uncomment this to use a two hour timeout.
 # The default is one hour.
-#timeout = 7200
+timeout = 7200
