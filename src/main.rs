@@ -13,7 +13,11 @@ extern crate nalgebra as na;
 extern crate mister_core;
 extern crate mister_gui;
 
+use glutin::{GlContext, GlRequest};
+use glutin::Api::OpenGl;
+
 use gfx::format::{DepthStencil, Rgba8, Srgba8};
+use gfx::texture::Mipmap;
 
 // Our rudimentary rendering system. Hurrah for laziness.
 gfx_defines! {
@@ -46,10 +50,15 @@ impl ToU32 for f32 {
 fn main() {
     use gfx::traits::{FactoryExt};
     use gfx::{Factory};
+    let mut events_loop = glutin::EventsLoop::new();
     let builder = glutin::WindowBuilder::new()
         .with_title("MISTER".to_string())
         .with_dimensions(640, 480);
-    let (mut window, mut device, mut factory, mut rtv, mut stv) = gfx_window::init::<Srgba8, DepthStencil>(builder);
+    let contextbuilder = glutin::ContextBuilder::new()
+        .with_gl(GlRequest::Specific(OpenGl,(3,2)))
+        .with_vsync(true);
+    let (mut window, mut device, mut factory, mut rtv, mut stv) = 
+        gfx_window::init::<Srgba8, DepthStencil>(builder, contextbuilder, &events_loop);
     println!("Main function!");
 
     // TODO: Make a rudimentary rendering system to quickly draw an image to the screen.
@@ -114,7 +123,7 @@ fn main() {
     let data: Vec<[u32; 4]> = image.data().iter().map(|x| [x[0].to_u32(), x[1].to_u32(), x[2].to_u32(), x[3].to_u32()]).collect();
     // let data: Vec<[u32; 4]> = colors.iter().map(|x| [(x.red.to_u32() + x.green.to_u32() + x.blue.to_u32()) / 3, 0, 0, x.alpha.to_u32()]).collect::<Vec<_>>();
     // let (tex, texview) = factory.create_texture_immutable_u8::<Rgba8>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
-    let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), &[&data]).unwrap();
+    let (tex, texview) = factory.create_texture_immutable::<Rgba32F>(Kind::D2(WIDTH as u16, HEIGHT as u16, AaMode::Single), Mipmap::Allocated, &[&data]).unwrap();
     let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
 
     // TODO Add model-view-projection matrix
@@ -127,29 +136,36 @@ fn main() {
         picture: (texview.clone(), sampler.clone())
     };
 
-    let mut view_update = vec![];
-    'system: loop {
+    let mut view_update = false;
+    let mut is_running = true;
+    let mut enc: gfx::Encoder<gfx_gl::Resources, _> = factory.create_command_buffer().into();
+    while is_running {
         use gfx::{Device};
         // use gfx::traits::{FactoryExt};
 
-        for event in window.poll_events() {
-            use glutin::Event;
-            match event {
-                Event::Closed => break 'system,
-                Event::Resized(_, _) => {
-                    println!("REC");
-                    view_update.push(());
-                },
-                _ => ()
+        events_loop.poll_events(|event| {
+            if let glutin::Event::WindowEvent { event, .. } = event {
+                match event {
+                    glutin::WindowEvent::Closed |
+                    glutin::WindowEvent::KeyboardInput {
+                        input: glutin::KeyboardInput {
+                            virtual_keycode: Some(glutin::VirtualKeyCode::Escape), ..
+                        }, ..
+                    } => is_running = false,
+                    glutin::WindowEvent::Resized(_, _) => {
+                        //println!("REC");
+                        view_update = true;
+                    },
+                    _ => {}
+                }
             }
-        }
+        });
 
-        for _ in view_update.drain(0..) {
+        if view_update {
             gfx_window::update_views(&mut window, &mut rtv, &mut stv);
             data.out = rtv.clone();
+            view_update = false;
         }
-
-        let mut enc: gfx::Encoder<gfx_gl::Resources, _> = factory.create_command_buffer().into();
 
         // draw everything here
         enc.clear(&rtv, [0.0, 0.0, 0.0, 1.0]);
