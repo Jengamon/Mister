@@ -120,6 +120,8 @@ branches:
     # release tags
     - /^v\d+\.\d+\.\d+.*$/
     - master
+    - staging
+    - trying
 
 notifications:
   email:
